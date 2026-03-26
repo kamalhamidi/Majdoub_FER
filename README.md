@@ -2,29 +2,6 @@
 
 Application web (SPA) de gestion d’un magasin de ferraille/matériaux métalliques.
 
-<img src="screenshots/screen.png" alt="Aperçu de l’application" width="100%" />
-
-
-## Captures d’écran
-
-<img src="screenshots/screen.png" alt="Capture principale" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.30.07.png" alt="Capture 1" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.30.17.png" alt="Capture 2" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.30.54.png" alt="Capture 3" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.01.png" alt="Capture 4" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.07.png" alt="Capture 5" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.14.png" alt="Capture 6" width="100%" />
-
-<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.31.png" alt="Capture 7" width="100%" />
-
-
-
 ## Fonctionnalités
 
 - Tableau de bord (KPI, alertes stock, activité récente)
@@ -74,3 +51,21 @@ Aucune installation n’est nécessaire.
 ## Licence
 
 Projet interne / privé (à adapter selon votre usage).
+
+## Captures d’écran
+
+<img src="screenshots/screen.png" alt="Capture principale" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.30.07.png" alt="Capture 1" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.30.17.png" alt="Capture 2" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.30.54.png" alt="Capture 3" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.01.png" alt="Capture 4" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.07.png" alt="Capture 5" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.14.png" alt="Capture 6" width="100%" />
+
+<img src="screenshots/Screenshot%202026-03-26%20at%2002.31.31.png" alt="Capture 7" width="100%" />
