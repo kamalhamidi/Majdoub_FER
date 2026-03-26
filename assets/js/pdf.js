@@ -10,7 +10,7 @@ const PDFGenerator = {
     const sale = db.getById(DB_KEYS.VENTES, saleId);
     if (!sale) { Toast.error('Vente non trouvée'); return; }
     const settings = db.getSettings();
-    const t = i18n.t.bind(i18n);
+    const t = (key) => translations.fr?.[key] || i18n.t(key);
 
     try {
       const { jsPDF } = window.jspdf;
@@ -101,7 +101,7 @@ const PDFGenerator = {
     const entry = db.getById(DB_KEYS.ENTREES_STOCK, entryId);
     if (!entry) { Toast.error('Entrée non trouvée'); return; }
     const settings = db.getSettings();
-    const t = i18n.t.bind(i18n);
+    const t = (key) => translations.fr?.[key] || i18n.t(key);
 
     try {
       const { jsPDF } = window.jspdf;
