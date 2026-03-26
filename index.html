@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAJDOUB Fer — Gestion de Magasin</title>
+  <meta name="description" content="Plateforme de gestion de magasin de fer MAJDOUB Fer - Produits, Stock, Ventes, Fournisseurs, Clients">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/modules/dashboard.css">
+  <link rel="stylesheet" href="assets/css/modules/produits.css">
+  <link rel="stylesheet" href="assets/css/modules/ventes.css">
+
+  <!-- Favicon (inline SVG as data URI) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23e94560' rx='20' width='100' height='100'/><text y='72' x='14' font-size='60' fill='white' font-family='serif' font-weight='bold'>MF</text></svg>">
+
+  <style>
+    /* Inline critical fonts fallback */
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap');
+  </style>
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-mesh"></div>
+
+  <!-- Particles -->
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- App Wrapper -->
+  <div class="app-wrapper">
+
+    <!-- Sidebar -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">MF</div>
+        <span class="sidebar-brand" data-i18n="app_name">MAJDOUB Fer</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section" data-i18n="nav_management">GESTION</div>
+
+        <a class="nav-item active" data-route="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label" data-i18n="dashboard">Tableau de Bord</span>
+        </a>
+
+        <a class="nav-item" data-route="produits">
+          <span class="nav-icon">📦</span>
+          <span class="nav-label" data-i18n="products">Produits</span>
+        </a>
+
+        <a class="nav-item" data-route="stock">
+          <span class="nav-icon">🏗️</span>
+          <span class="nav-label" data-i18n="stock">Stock</span>
+        </a>
+
+        <a class="nav-item" data-route="ventes">
+          <span class="nav-icon">🛒</span>
+          <span class="nav-label" data-i18n="sales">Ventes</span>
+        </a>
+
+        <a class="nav-item" data-route="fournisseurs">
+          <span class="nav-icon">🏭</span>
+          <span class="nav-label" data-i18n="suppliers">Fournisseurs</span>
+        </a>
+
+        <a class="nav-item" data-route="clients">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label" data-i18n="clients">Clients</span>
+        </a>
+
+        <div class="nav-section" data-i18n="nav_other">AUTRE</div>
+
+        <a class="nav-item" data-route="rapports">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label" data-i18n="reports">Rapports</span>
+        </a>
+
+        <a class="nav-item" data-route="parametres">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label" data-i18n="settings">Paramètres</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Header -->
+    <header class="app-header" id="app-header">
+      <div class="header-left">
+        <h1 class="header-title" data-i18n="app_name">MAJDOUB Fer</h1>
+      </div>
+      <div class="header-right">
+        <div class="header-clock" id="header-clock"></div>
+        <div class="lang-toggle">
+          <button class="lang-btn active" data-lang="fr" onclick="toggleLang('fr')">FR</button>
+          <button class="lang-btn" data-lang="ar" onclick="toggleLang('ar')">عربي</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main" id="app-main">
+      <div id="module-content" class="page-enter">
+        <!-- Module content rendered here by router -->
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts (order matters) -->
+  <script src="assets/libs/jspdf.min.js"></script>
+  <script src="assets/js/db.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/modules/dashboard.js"></script>
+  <script src="assets/js/modules/produits.js"></script>
+  <script src="assets/js/modules/stock.js"></script>
+  <script src="assets/js/modules/ventes.js"></script>
+  <script src="assets/js/modules/fournisseurs.js"></script>
+  <script src="assets/js/modules/clients.js"></script>
+  <script src="assets/js/modules/rapports.js"></script>
+  <script src="assets/js/modules/parametres.js"></script>
+  <script src="assets/js/pdf.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
