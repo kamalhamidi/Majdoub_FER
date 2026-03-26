@@ -2,7 +2,9 @@
 
 Application web (SPA) de gestion d’un magasin de ferraille/matériaux métalliques.
 
-![Aperçu de l’application](screen.png)
+<img src="screen.png" alt="Aperçu de l’application" width="100%" />
+
+
 
 ## Fonctionnalités
 
