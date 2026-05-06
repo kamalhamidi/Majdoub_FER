@@ -4,6 +4,8 @@
 
 const ClientsModule = {
   searchQuery: '',
+  currentPage: 1,
+  perPage: 15,
 
   render() {
     const content = document.getElementById('module-content');
@@ -19,6 +21,9 @@ const ClientsModule = {
     }
     // Sort by total purchases descending
     clients.sort((a, b) => (b.totalAchats || 0) - (a.totalAchats || 0));
+    const totalPages = Math.max(1, Math.ceil(clients.length / this.perPage));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+    const paged = clients.slice((this.currentPage - 1) * this.perPage, this.currentPage * this.perPage);
 
     content.innerHTML = `
       <div class="page-header">
@@ -53,11 +58,11 @@ const ClientsModule = {
           </thead>
           <tbody>
             ${clients.length === 0 ? `<tr><td colspan="8" class="text-center text-muted" style="padding:40px">${t('no_data')}</td></tr>` :
-              clients.map((c, idx) => `
+              paged.map((c, idx) => `
                 <tr>
                   <td>
                     <div class="flex items-center gap-sm">
-                      ${idx < 3 && (c.totalAchats || 0) > 0 ? `<span style="font-size:0.9rem">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</span>` : ''}
+                      ${(this.currentPage === 1 && idx < 3 && (c.totalAchats || 0) > 0) ? `<span style="font-size:0.9rem">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</span>` : ''}
                       <strong>${Utils.escapeHtml(c.nom)}</strong>
                     </div>
                   </td>
@@ -79,17 +84,42 @@ const ClientsModule = {
           </tbody>
         </table>
       </div>
+
+      ${clients.length > this.perPage ? `
+        <div class="data-table-pagination">
+          <span>${(this.currentPage - 1) * this.perPage + 1}-${Math.min(this.currentPage * this.perPage, clients.length)} / ${clients.length}</span>
+          <div class="pagination-buttons">
+            <button class="pagination-btn" onclick="ClientsModule.goPage(${this.currentPage - 1})" ${this.currentPage <= 1 ? 'disabled' : ''}>‹</button>
+            ${Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - this.currentPage) <= 2).map(p =>
+              `<button class="pagination-btn ${p === this.currentPage ? 'active' : ''}" onclick="ClientsModule.goPage(${p})">${p}</button>`
+            ).join('')}
+            <button class="pagination-btn" onclick="ClientsModule.goPage(${this.currentPage + 1})" ${this.currentPage >= totalPages ? 'disabled' : ''}>›</button>
+          </div>
+        </div>
+      ` : ''}
     `;
   },
 
   onSearch: Utils.debounce(function(val) {
     ClientsModule.searchQuery = val;
+    ClientsModule.currentPage = 1;
     ClientsModule.render();
     setTimeout(() => {
       const input = document.getElementById('client-search');
       if (input) { input.focus(); input.selectionStart = input.selectionEnd = val.length; }
     }, 50);
   }, 250),
+
+  goPage(p) {
+    const total = Math.max(1, Math.ceil(db.getAll(DB_KEYS.CLIENTS).filter(c => c.actif !== false).filter(c => {
+      if (!this.searchQuery) return true;
+      const q = this.searchQuery.toLowerCase();
+      return (c.nom || '').toLowerCase().includes(q) || (c.telephone || '').includes(q) || (c.ville || '').toLowerCase().includes(q);
+    }).length / this.perPage));
+    if (p < 1 || p > total) return;
+    this.currentPage = p;
+    this.render();
+  },
 
   showForm(id) {
     const t = i18n.t.bind(i18n);

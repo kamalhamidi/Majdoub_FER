@@ -4,6 +4,8 @@
 
 const FournisseursModule = {
   searchQuery: '',
+  currentPage: 1,
+  perPage: 15,
 
   render() {
     const content = document.getElementById('module-content');
@@ -17,6 +19,9 @@ const FournisseursModule = {
         (f.telephone || '').includes(q)
       );
     }
+    const totalPages = Math.max(1, Math.ceil(fournisseurs.length / this.perPage));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+    const paged = fournisseurs.slice((this.currentPage - 1) * this.perPage, this.currentPage * this.perPage);
 
     content.innerHTML = `
       <div class="page-header">
@@ -50,7 +55,7 @@ const FournisseursModule = {
           </thead>
           <tbody>
             ${fournisseurs.length === 0 ? `<tr><td colspan="7" class="text-center text-muted" style="padding:40px">${t('no_data')}</td></tr>` :
-              fournisseurs.map(f => `
+              paged.map(f => `
                 <tr>
                   <td><strong>${Utils.escapeHtml(f.nom)}</strong></td>
                   <td>${Utils.escapeHtml(f.nomContact || '-')}</td>
@@ -70,17 +75,42 @@ const FournisseursModule = {
           </tbody>
         </table>
       </div>
+
+      ${fournisseurs.length > this.perPage ? `
+        <div class="data-table-pagination">
+          <span>${(this.currentPage - 1) * this.perPage + 1}-${Math.min(this.currentPage * this.perPage, fournisseurs.length)} / ${fournisseurs.length}</span>
+          <div class="pagination-buttons">
+            <button class="pagination-btn" onclick="FournisseursModule.goPage(${this.currentPage - 1})" ${this.currentPage <= 1 ? 'disabled' : ''}>‹</button>
+            ${Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - this.currentPage) <= 2).map(p =>
+              `<button class="pagination-btn ${p === this.currentPage ? 'active' : ''}" onclick="FournisseursModule.goPage(${p})">${p}</button>`
+            ).join('')}
+            <button class="pagination-btn" onclick="FournisseursModule.goPage(${this.currentPage + 1})" ${this.currentPage >= totalPages ? 'disabled' : ''}>›</button>
+          </div>
+        </div>
+      ` : ''}
     `;
   },
 
   onSearch: Utils.debounce(function(val) {
     FournisseursModule.searchQuery = val;
+    FournisseursModule.currentPage = 1;
     FournisseursModule.render();
     setTimeout(() => {
       const input = document.getElementById('supplier-search');
       if (input) { input.focus(); input.selectionStart = input.selectionEnd = val.length; }
     }, 50);
   }, 250),
+
+  goPage(p) {
+    const total = Math.max(1, Math.ceil(db.getAll(DB_KEYS.FOURNISSEURS).filter(f => f.actif !== false).filter(f => {
+      if (!this.searchQuery) return true;
+      const q = this.searchQuery.toLowerCase();
+      return (f.nom || '').toLowerCase().includes(q) || (f.nomContact || '').toLowerCase().includes(q) || (f.telephone || '').includes(q);
+    }).length / this.perPage));
+    if (p < 1 || p > total) return;
+    this.currentPage = p;
+    this.render();
+  },
 
   showForm(id) {
     const t = i18n.t.bind(i18n);

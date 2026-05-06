@@ -157,7 +157,8 @@ const Utils = {
    * Create ripple effect on button click
    */
   createRipple(event) {
-    const button = event.currentTarget;
+    const button = event.target?.closest?.('.btn');
+    if (!button) return;
     const circle = document.createElement('span');
     const diameter = Math.max(button.clientWidth, button.clientHeight);
     const radius = diameter / 2;
@@ -263,8 +264,10 @@ const Utils = {
       case 'today':
         return { start: today, end: now };
       case 'week': {
+        // Current week start (Monday)
         const weekStart = new Date(today);
-        weekStart.setDate(weekStart.getDate() - 7);
+        const dayIndex = (weekStart.getDay() + 6) % 7; // Monday=0 ... Sunday=6
+        weekStart.setDate(weekStart.getDate() - dayIndex);
         return { start: weekStart, end: now };
       }
       case 'month': {
@@ -284,7 +287,18 @@ const Utils = {
    * Check if date is within range
    */
   isInDateRange(dateStr, start, end) {
-    const d = new Date(dateStr);
+    if (!dateStr) return false;
+
+    let d;
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [y, m, day] = dateStr.split('-').map(Number);
+      // Use local time to avoid UTC parsing shift issues.
+      d = new Date(y, m - 1, day, 12, 0, 0, 0);
+    } else {
+      d = new Date(dateStr);
+    }
+
+    if (isNaN(d.getTime())) return false;
     return d >= start && d <= end;
   },
 };

@@ -11,11 +11,18 @@ const VentesModule = {
   searchQuery: '',
   categoryFilter: '',
   amountReceived: 0,
+  catalogPage: 1,
+  catalogPerPage: 24,
+  historyPage: 1,
+  historyPerPage: 15,
 
   render() {
     const content = document.getElementById('module-content');
     const t = i18n.t.bind(i18n);
     const produits = this._getFilteredProducts();
+    const totalCatalogPages = Math.max(1, Math.ceil(produits.length / this.catalogPerPage));
+    if (this.catalogPage > totalCatalogPages) this.catalogPage = totalCatalogPages;
+    const pagedProducts = produits.slice((this.catalogPage - 1) * this.catalogPerPage, this.catalogPage * this.catalogPerPage);
 
     content.innerHTML = `
       <div class="page-header">
@@ -41,7 +48,7 @@ const VentesModule = {
           </div>
           <div class="pos-product-grid">
             ${produits.length === 0 ? `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${t('no_results')}</div></div>` :
-              produits.map(p => {
+              pagedProducts.map(p => {
                 const status = Utils.getStockStatus(p.stockActuel || 0, p.stockMinimum || 50);
                 return `
                   <div class="pos-product-item ${(p.stockActuel || 0) <= 0 ? 'out-of-stock' : ''}"
@@ -54,6 +61,18 @@ const VentesModule = {
                 `;
               }).join('')}
           </div>
+          ${produits.length > this.catalogPerPage ? `
+            <div class="data-table-pagination" style="margin-top: var(--space-sm)">
+              <span>${(this.catalogPage - 1) * this.catalogPerPage + 1}-${Math.min(this.catalogPage * this.catalogPerPage, produits.length)} / ${produits.length}</span>
+              <div class="pagination-buttons">
+                <button class="pagination-btn" onclick="VentesModule.goCatalogPage(${this.catalogPage - 1})" ${this.catalogPage <= 1 ? 'disabled' : ''}>‹</button>
+                ${Array.from({ length: totalCatalogPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalCatalogPages || Math.abs(p - this.catalogPage) <= 2).map(p =>
+                  `<button class="pagination-btn ${p === this.catalogPage ? 'active' : ''}" onclick="VentesModule.goCatalogPage(${p})">${p}</button>`
+                ).join('')}
+                <button class="pagination-btn" onclick="VentesModule.goCatalogPage(${this.catalogPage + 1})" ${this.catalogPage >= totalCatalogPages ? 'disabled' : ''}>›</button>
+              </div>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Cart -->
@@ -193,6 +212,7 @@ const VentesModule = {
 
   onSearch: Utils.debounce(function(val) {
     VentesModule.searchQuery = val;
+    VentesModule.catalogPage = 1;
     VentesModule.render();
     setTimeout(() => {
       const input = document.getElementById('pos-search');
@@ -202,6 +222,14 @@ const VentesModule = {
 
   filterCategory(cat) {
     this.categoryFilter = cat;
+    this.catalogPage = 1;
+    this.render();
+  },
+
+  goCatalogPage(p) {
+    const total = Math.max(1, Math.ceil(this._getFilteredProducts().length / this.catalogPerPage));
+    if (p < 1 || p > total) return;
+    this.catalogPage = p;
     this.render();
   },
 
@@ -444,6 +472,9 @@ const VentesModule = {
   showSalesHistory() {
     const t = i18n.t.bind(i18n);
     const ventes = db.getAll(DB_KEYS.VENTES).sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation));
+    const totalPages = Math.max(1, Math.ceil(ventes.length / this.historyPerPage));
+    if (this.historyPage > totalPages) this.historyPage = totalPages;
+    const paged = ventes.slice((this.historyPage - 1) * this.historyPerPage, this.historyPage * this.historyPerPage);
 
     Modal.show({
       title: t('sales'),
@@ -463,7 +494,7 @@ const VentesModule = {
             </thead>
             <tbody>
               ${ventes.length === 0 ? `<tr><td colspan="7" class="text-center text-muted" style="padding:40px">${t('no_data')}</td></tr>` :
-                ventes.map(v => `
+                paged.map(v => `
                   <tr>
                     <td class="font-mono" style="font-size:0.78rem">${v.id}</td>
                     <td>${Utils.formatDate(v.date)} ${v.heure || ''}</td>
@@ -479,8 +510,27 @@ const VentesModule = {
             </tbody>
           </table>
         </div>
+        ${ventes.length > this.historyPerPage ? `
+          <div class="data-table-pagination" style="margin-top: var(--space-sm)">
+            <span>${(this.historyPage - 1) * this.historyPerPage + 1}-${Math.min(this.historyPage * this.historyPerPage, ventes.length)} / ${ventes.length}</span>
+            <div class="pagination-buttons">
+              <button class="pagination-btn" onclick="VentesModule.goHistoryPage(${this.historyPage - 1})" ${this.historyPage <= 1 ? 'disabled' : ''}>‹</button>
+              ${Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - this.historyPage) <= 2).map(p =>
+                `<button class="pagination-btn ${p === this.historyPage ? 'active' : ''}" onclick="VentesModule.goHistoryPage(${p})">${p}</button>`
+              ).join('')}
+              <button class="pagination-btn" onclick="VentesModule.goHistoryPage(${this.historyPage + 1})" ${this.historyPage >= totalPages ? 'disabled' : ''}>›</button>
+            </div>
+          </div>
+        ` : ''}
       `,
       size: 'xl',
     });
+  },
+
+  goHistoryPage(p) {
+    const total = Math.max(1, Math.ceil(db.getAll(DB_KEYS.VENTES).length / this.historyPerPage));
+    if (p < 1 || p > total) return;
+    this.historyPage = p;
+    this.showSalesHistory();
   }
 };

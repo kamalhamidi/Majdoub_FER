@@ -3,10 +3,16 @@
  */
 
 const StockModule = {
+  currentPage: 1,
+  perPage: 20,
+
   render() {
     const content = document.getElementById('module-content');
     const t = i18n.t.bind(i18n);
     const entrees = db.getAll(DB_KEYS.ENTREES_STOCK).sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation));
+    const totalPages = Math.max(1, Math.ceil(entrees.length / this.perPage));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+    const paged = entrees.slice((this.currentPage - 1) * this.perPage, this.currentPage * this.perPage);
 
     content.innerHTML = `
       <div class="page-header">
@@ -33,7 +39,7 @@ const StockModule = {
           </thead>
           <tbody>
             ${entrees.length === 0 ? `<tr><td colspan="8" class="text-center text-muted" style="padding:40px">${t('no_data')}</td></tr>` :
-              entrees.map(e => `
+              paged.map(e => `
                 <tr>
                   <td class="font-mono" style="font-size:0.8rem">${e.id}</td>
                   <td>${Utils.formatDate(e.date)}</td>
@@ -53,7 +59,28 @@ const StockModule = {
           </tbody>
         </table>
       </div>
+
+      ${entrees.length > this.perPage ? `
+        <div class="data-table-pagination">
+          <span>${(this.currentPage - 1) * this.perPage + 1}-${Math.min(this.currentPage * this.perPage, entrees.length)} / ${entrees.length}</span>
+          <div class="pagination-buttons">
+            <button class="pagination-btn" onclick="StockModule.goPage(${this.currentPage - 1})" ${this.currentPage <= 1 ? 'disabled' : ''}>‹</button>
+            ${Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              const p = Math.max(1, Math.min(totalPages, this.currentPage - 3 + i));
+              return `<button class="pagination-btn ${p === this.currentPage ? 'active' : ''}" onclick="StockModule.goPage(${p})">${p}</button>`;
+            }).filter((v, i, arr) => arr.indexOf(v) === i).join('')}
+            <button class="pagination-btn" onclick="StockModule.goPage(${this.currentPage + 1})" ${this.currentPage >= totalPages ? 'disabled' : ''}>›</button>
+          </div>
+        </div>
+      ` : ''}
     `;
+  },
+
+  goPage(p) {
+    const total = Math.max(1, Math.ceil(db.getAll(DB_KEYS.ENTREES_STOCK).length / this.perPage));
+    if (p < 1 || p > total) return;
+    this.currentPage = p;
+    this.render();
   },
 
   showForm() {

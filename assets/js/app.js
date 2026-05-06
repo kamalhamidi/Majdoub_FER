@@ -189,6 +189,7 @@ const Router = {
     // Animate page out then in
     const content = document.getElementById('module-content');
     if (content) {
+      document.body.classList.add('route-loading');
       content.classList.remove('page-enter');
       content.classList.add('page-exit');
 
@@ -199,10 +200,12 @@ const Router = {
         content.classList.add('page-enter');
         // Scroll to top
         document.querySelector('.app-main').scrollTop = 0;
+        setTimeout(() => document.body.classList.remove('route-loading'), 220);
       }, 150);
     } else {
       this.currentModule = hash;
       renderFn();
+      document.body.classList.remove('route-loading');
     }
   }
 };
@@ -462,6 +465,256 @@ function _daysAgo(n) {
   return d.toISOString().split('T')[0];
 }
 
+/**
+ * Ensure we have realistic long-term demo data (about 3 years)
+ * Runs once and stores a flag in settings.
+ */
+function ensureLongTermDemoData() {
+  const settings = db.getSettings();
+  if (settings.demoHistorique3Ans) return false;
+
+  const produits = db.getAll(DB_KEYS.PRODUITS).filter(p => p.actif !== false);
+  const fournisseurs = db.getAll(DB_KEYS.FOURNISSEURS).filter(f => f.actif !== false);
+  const clients = db.getAll(DB_KEYS.CLIENTS).filter(c => c.actif !== false);
+
+  if (!produits.length || !fournisseurs.length) return false;
+
+  const ventesCount = db.getAll(DB_KEYS.VENTES).length;
+  const entriesCount = db.getAll(DB_KEYS.ENTREES_STOCK).length;
+
+  // If already rich enough, mark as done without generating.
+  if (ventesCount >= 650 && entriesCount >= 180) {
+    db.saveSettings({ ...settings, demoHistorique3Ans: true });
+    return false;
+  }
+
+  generateHistoricalDemoData({
+    months: 36,
+    targetSales: 720,
+    targetEntries: 220,
+    produits,
+    fournisseurs,
+    clients,
+  });
+
+  db.saveSettings({ ...db.getSettings(), demoHistorique3Ans: true });
+  return true;
+}
+
+function generateHistoricalDemoData({ months = 36, targetSales = 720, targetEntries = 220, produits, fournisseurs, clients }) {
+  const paymentModes = ['especes', 'cheque', 'virement', 'credit'];
+  const paymentStatus = ['payé', 'payé', 'payé', 'partiel', 'à payer'];
+
+  const stockMap = new Map();
+  produits.forEach(p => stockMap.set(p.id, Math.max(0, parseFloat(p.stockActuel) || 0)));
+
+  const clientStatsMap = new Map();
+  clients.forEach(c => {
+    clientStatsMap.set(c.id, {
+      totalAchats: parseFloat(c.totalAchats) || 0,
+      nombreCommandes: parseInt(c.nombreCommandes, 10) || 0,
+      dernierAchat: c.dernierAchat || null,
+    });
+  });
+
+  const monthList = [];
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  start.setMonth(start.getMonth() - (months - 1));
+  const cursor = new Date(start);
+
+  while (cursor <= now) {
+    monthList.push({ year: cursor.getFullYear(), month: cursor.getMonth() });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const salesBase = Math.max(8, Math.round(targetSales / monthList.length));
+  const entriesBase = Math.max(3, Math.round(targetEntries / monthList.length));
+
+  monthList.forEach(({ year, month }) => {
+    const salesCount = Math.max(6, Math.round(salesBase * (0.75 + Math.random() * 0.7)));
+    const entriesCount = Math.max(2, Math.round(entriesBase * (0.7 + Math.random() * 0.8)));
+
+    // Historical purchase entries
+    for (let i = 0; i < entriesCount; i++) {
+      const entryDate = _randomDateInMonth(year, month);
+      const supplier = _pick(fournisseurs);
+      const lineCount = _randInt(2, 6);
+      const used = new Set();
+      const lignes = [];
+
+      for (let li = 0; li < lineCount; li++) {
+        const prod = _pickUniqueById(produits, used) || _pick(produits);
+        if (!prod) continue;
+
+        const qty = _randomQtyForUnit(prod.unite, true);
+        const buyPrice = _round2((parseFloat(prod.prixAchat) || 1) * (0.9 + Math.random() * 0.22));
+        const total = _round2(qty * buyPrice);
+
+        lignes.push({
+          produitId: prod.id,
+          produitNom: prod.nom,
+          quantite: qty,
+          unite: prod.unite || '',
+          prixAchatUnitaire: buyPrice,
+          montantTotal: total,
+        });
+
+        stockMap.set(prod.id, (stockMap.get(prod.id) || 0) + qty);
+      }
+
+      if (!lignes.length) continue;
+
+      db.create(DB_KEYS.ENTREES_STOCK, {
+        type: 'entree',
+        date: _toISODate(entryDate),
+        heure: _randomTime(),
+        fournisseurId: supplier?.id || null,
+        fournisseurNom: supplier?.nom || '-',
+        numeroFactureFournisseur: `FAC-${year}${String(month + 1).padStart(2, '0')}-${_randInt(1000, 9999)}`,
+        lignes,
+        montantTotalEntree: _round2(lignes.reduce((s, l) => s + l.montantTotal, 0)),
+        modePaiement: _pick(paymentModes),
+        statut: _pick(paymentStatus),
+        notes: '',
+      });
+    }
+
+    // Historical sales
+    for (let i = 0; i < salesCount; i++) {
+      const saleDate = _randomDateInMonth(year, month);
+      const lineCount = _randInt(1, 4);
+      const used = new Set();
+      const lignes = [];
+
+      for (let li = 0; li < lineCount; li++) {
+        const availableProducts = produits.filter(p => (stockMap.get(p.id) || 0) > 1);
+        const prod = _pickUniqueById(availableProducts.length ? availableProducts : produits, used) || _pick(produits);
+        if (!prod) continue;
+
+        const available = stockMap.get(prod.id) || 0;
+        const wishedQty = _randomQtyForUnit(prod.unite, false);
+        const qty = Math.max(1, Math.min(wishedQty, Math.max(1, Math.floor(available || wishedQty))));
+        const sellPrice = _round2((parseFloat(prod.prixVente) || 1) * (0.94 + Math.random() * 0.18));
+
+        lignes.push({
+          produitId: prod.id,
+          produitNom: prod.nom,
+          quantite: qty,
+          unite: prod.unite || '',
+          prixVenteUnitaire: sellPrice,
+          remisePct: 0,
+          montantLigne: _round2(qty * sellPrice),
+        });
+
+        stockMap.set(prod.id, Math.max(0, (stockMap.get(prod.id) || 0) - qty));
+      }
+
+      if (!lignes.length) continue;
+
+      const sousTotal = _round2(lignes.reduce((s, l) => s + l.montantLigne, 0));
+      const remiseGlobalePct = Math.random() < 0.35 ? _randInt(2, 10) : 0;
+      const remiseGlobale = _round2(sousTotal * (remiseGlobalePct / 100));
+      const totalNet = _round2(sousTotal - remiseGlobale);
+
+      const client = clients.length && Math.random() < 0.78 ? _pick(clients) : null;
+      const modePaiement = _pick(paymentModes);
+      const montantRecu = modePaiement === 'especes' ? _round2(totalNet + _randInt(0, 8) * 5) : totalNet;
+
+      db.create(DB_KEYS.VENTES, {
+        date: _toISODate(saleDate),
+        heure: _randomTime(),
+        clientId: client?.id || null,
+        clientNom: client?.nom || 'Client Anonyme',
+        lignes,
+        sousTotal,
+        remiseGlobale,
+        remiseGlobalePct,
+        totalNet,
+        modePaiement,
+        montantRecu,
+        monnaie: _round2(Math.max(0, montantRecu - totalNet)),
+        statut: 'completée',
+      });
+
+      if (client?.id && clientStatsMap.has(client.id)) {
+        const stats = clientStatsMap.get(client.id);
+        stats.totalAchats = _round2((stats.totalAchats || 0) + totalNet);
+        stats.nombreCommandes = (stats.nombreCommandes || 0) + 1;
+        if (!stats.dernierAchat || _toISODate(saleDate) > stats.dernierAchat) {
+          stats.dernierAchat = _toISODate(saleDate);
+        }
+      }
+    }
+  });
+
+  // Persist resulting stock and client stats
+  produits.forEach(p => {
+    db.update(DB_KEYS.PRODUITS, p.id, {
+      stockActuel: _round2(stockMap.get(p.id) || 0),
+    });
+  });
+
+  clients.forEach(c => {
+    const stats = clientStatsMap.get(c.id);
+    if (!stats) return;
+    db.update(DB_KEYS.CLIENTS, c.id, {
+      totalAchats: stats.totalAchats,
+      nombreCommandes: stats.nombreCommandes,
+      dernierAchat: stats.dernierAchat,
+    });
+  });
+}
+
+function _randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function _pick(arr) {
+  if (!arr || !arr.length) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function _pickUniqueById(arr, usedSet) {
+  const available = (arr || []).filter(item => item && !usedSet.has(item.id));
+  if (!available.length) return null;
+  const selected = _pick(available);
+  if (selected?.id) usedSet.add(selected.id);
+  return selected;
+}
+
+function _round2(n) {
+  return Math.round((parseFloat(n) || 0) * 100) / 100;
+}
+
+function _randomDateInMonth(year, month) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const day = _randInt(1, lastDay);
+  return new Date(year, month, day, _randInt(9, 18), _randInt(0, 59), _randInt(0, 59));
+}
+
+function _toISODate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function _randomTime() {
+  return `${String(_randInt(8, 19)).padStart(2, '0')}:${String(_randInt(0, 59)).padStart(2, '0')}`;
+}
+
+function _randomQtyForUnit(unit, isEntry = false) {
+  const u = String(unit || '').toLowerCase();
+  if (u.includes('pièce') || u.includes('piece') || u.includes('barre')) {
+    return isEntry ? _randInt(5, 80) : _randInt(1, 18);
+  }
+  if (u.includes('kg') || u.includes('tonne')) {
+    return isEntry ? _randInt(80, 1500) : _randInt(5, 180);
+  }
+  return isEntry ? _randInt(30, 500) : _randInt(2, 70);
+}
+
 // ==========================================
 // App Initialization
 // ==========================================
@@ -479,6 +732,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Init Toast
   Toast.init();
+
+  // Enrich demo data to simulate long-term usage (3 years)
+  const historiqueAjoute = ensureLongTermDemoData();
+  if (historiqueAjoute) {
+    Toast.info('Historique ajouté', 'Données simulées sur 3 ans générées.');
+  }
 
   // Init sidebar
   initSidebar();
